@@ -1,0 +1,21 @@
+# Airfow
+
+- Airflow helps you in visibility:
+    - Monitor the progress of your workflows
+    - Quickly identify and troubleshoot issues
+    - Understand dependencies between tasks
+
+- Airflow is like a Swiss Army Knife:
+    - Connect to many data sources and tools
+    - Start small and grow as your projects get bigger
+    - Customize your work to fit your exact needs
+
+
+### Airfow is not
+
+- made for handling realtime data streaming. You can schedule your data pipelines your DAGs based on data events, but still it is not streaming.
+- a data storage system.
+- a data processing framework like Apache Spark. 
+- made for processing large datasets. 
+
+### This doc only covers single-node architecture

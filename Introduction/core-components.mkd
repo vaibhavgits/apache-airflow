@@ -1,0 +1,44 @@
+# Airflow's Core Components
+
+
+### 1. Web Interface (UI):
+- It allows you to view, manage, and monitor your workflows through a web browser.
+
+### 2. Scheduler:
+- It determines when tasks should run.  
+- It ensures your tasks run at the right time and in the correct order.
+
+### 3. Metadata Database
+- It's like a Airflow memory.
+- This is the database(commonly PostgreSQL) that stores information about your tasks and their status.
+- It keeps track of all the important details about your workflows
+
+
+### 4. Triggering:
+- The trigger is a little bit special because it is responsible for managing deferrable tasks.
+- Tasks tasks that wait for external events.
+- It allows airflow to efficiently handle tasks that depend on external factors without blocking other processes.
+- To illustrate that, imagine that you are waiting for an important email before starting a task.
+- The trigger is like your assistant, who keeps an eye on your inbox and notifies you when the email 
+arrives, allowing you to focus on other work in the meantime.
+
+
+### 5. Executor
+
+- It manages the execution of your tasks, deciding whether to run them in sequence or in parallel, and 
+on which system you can think of the executor as a traffic controller, just as a traffic controller
+decides which cars go when to optimize traffic flow.
+
+
+### 6. Worker
+
+- Worker is a process that actually perform the tasks they do the actual work defined in your tasks.
+- They pull tasks from the work queue, execute them, and report the results back to the Scheduler.
+
+
+**Worker executes your tasks, The executor does not execute your tasks.**
+
+### 7. Queue
+
+- The queue is a list of tasks waiting to be executed.
+- It helps to manage the order of task execution, especially when there are many tasks to run.

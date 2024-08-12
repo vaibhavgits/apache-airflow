@@ -125,7 +125,9 @@ with DAG('user_processing', start_date=datetime(2022, 1, 1),
 
 ## What is a Hook?
 
-In a very simple way, the example given by the instructor involves a PostgreSQL database. The PostgresOperator would be responsible for connecting to the database; however, between the Operator and the database, the PostgresHook comes into play. It is necessary to abstract all the complexity involved in interacting with the PostgreSQL database.
+Hooks are interfaces to external systems. They are used to connect to and interact with databases, APIs, and other services. Hooks provide methods to simplify the process of querying databases, making HTTP requests, etc.
+
+The PostgresOperator would be responsible for connecting to the database; however, between the Operator and the database, the PostgresHook comes into play. It is necessary to abstract all the complexity involved in interacting with the PostgreSQL database.
 
 In essence, it is necessary to use Hooks as intermediaries between the Operators and the entity being connected.
 
@@ -157,6 +159,108 @@ with DAG('user_processing', start_date=datetime(2022, 1, 1),
 create_table >> is_api_available >> extract_user >> process_user >> store_user
 ```
 
+### Code Explanation
+
+PostgresHook: A hook instance is created to connect to the PostgreSQL database using the connection ID postgres.
+
+copy_expert Method: This method is used to execute the SQL COPY command, which copies data from a CSV file (/tmp/processed_user.csv) into the users table in the PostgreSQL database.
+
+
+### PostgresHook
+
+The PostgresHook is a specific type of hook in Airflow designed to interact with PostgreSQL databases. It provides methods for connecting to a PostgreSQL database and executing SQL queries.
+
+
+### PostgreSQL vs SQL Server
+
+SQL Server has a row-based table structure that allows you to connect related data elements from different tables without having to store data multiple times in a database. 
+
+A relational database management system (RDBMS) is based on the relational model of data. e.g. SQL Server
+
+An object-relational database management is based on the relational model with additional support for object-oriented concepts, such as classes, objects, and inheritance. For example, an object-relational database management system can handle new data types like video, audio, and image files that RDBMSs are not equipped to handle. e.g. PostgreSQL
+
+
+### You want to make a SQL Request on Postgres Database using PostgresOpeator.
+
+SQL Request: Refers to executing SQL commands or SQL Query.
+
+Postgres Request: Using SQL commands to interact with a PostgreSQL database.
+
+SQL and Postgres Relationship: PostgreSQL is a database system that uses SQL as its query language.
+
+Airflow PostgresOperator: A tool in Airflow to execute SQL commands on a PostgreSQL database.
+
+
+### What if we didn't used Hook?
+
+```python
+import psycopg2
+
+def _store_user():
+    # Define the connection parameters
+    conn_params = {
+        'dbname': 'your_db_name',
+        'user': 'your_db_user',
+        'password': 'your_db_password',
+        'host': 'your_db_host',
+        'port': 'your_db_port'
+    }
+  
+    # Connect to the PostgreSQL database
+    conn = psycopg2.connect(**conn_params)
+  
+    try:
+        # Create a cursor object
+        cursor = conn.cursor()
+    
+        # Open the CSV file
+        with open('/tmp/processed_user.csv', 'r') as f:
+            # Use the copy_expert method to load data from the CSV file into the users table
+            cursor.copy_expert(
+                sql="COPY users FROM stdin WITH DELIMITER as ','",
+                file=f
+            )
+    
+        # Commit the transaction
+        conn.commit()
+  
+    except Exception as e:
+        # Rollback the transaction in case of an error
+        conn.rollback()
+        raise e
+  
+    finally:
+        # Close the cursor and the connection
+        cursor.close()
+        conn.close()
+```
+
+The ** operator in psycopg2.connect(**conn_params) is a shorthand for passing multiple keyword arguments to a function, making the code cleaner and more flexible.
+
+
+### Using Hook vs Without using Hook
+
+1. **Connection Management:**
+
+Without Hook: Manual connection management is needed (psycopg2.connect), including handling connection parameters, creating a cursor, and closing both.
+
+With Hook: The PostgresHook handles connection management automatically. You only need to specify the connection ID (postgres_conn_id).
+
+File Operations:
+
+Without Hook: Manually open the CSV file and pass it to the copy_expert method of the cursor.
+
+With Hook: The hook's copy_expert method takes care of opening the file and executing the COPY command.
+
+Transaction Management:
+
+
+
+Without Hook: Manually commit the transaction, and handle rollbacks in case of errors using try-except-finally blocks.
+
+With Hook: The PostgresHook abstracts away transaction management, making the code cleaner and reducing the likelihood of errors.
+
+
 ## The Final Result of the DAG
 
 Above, we can see the graph showing the relationship between the elements of the DAG. In essence, it is a model that demonstrates the ability to create a table in a PostgreSQL database, check if an API is available, retrieve data from that API, and, using Pandas resources to handle JSON, structure it in a more aesthetic way and save it to the database, utilizing the features we covered with the Hook (read the previous topic above).
@@ -168,6 +272,7 @@ We can see in the image below that the DAG was executed successfully.
 In the image below, we can see that the data transfer from the user extraction API was successful and that the CSV document was saved properly in the container.
 
 Finally, in the image below, we can see the container's terminal containing PostgreSQL and with the table we had created in the DAG, now populated with the user obtained from the public API that generates random users.
+
 
 ## Scheduling DAG Execution
 
@@ -182,9 +287,12 @@ with DAG('my_example_dag', start_date=datetime(2022, 1, 1),
 
 The *schedule_interval* accepts CRON-like expressions, but there are some predefined forms (like the case of @daily). However, for finer adjustments, it is recommended to understand how to work with CRON.
 
-Note: The DAG is triggered AFTER the start_date/last_run + the schedule_interval.
+Note: A DAG is triggered AFTER the start_date/last_run + the schedule_interval. 
+
 
 ### A Practical Example of DAG Execution
+
+![1723111119189](image/project/1723111119189.png)
 
 Let's assume we have a DAG with a *start_date* at 10:00 AM and a *schedule_interval* every 10 minutes.
 
@@ -192,6 +300,19 @@ At 10:00 AM, nothing happens, although it's the *start_date* marker. After waiti
 
 After 10 minutes, the DAG will be executed again, now at 10:20 AM.
 
+
 ### The Catchup Mechanism
 
+![1723113570471](image/project/1723113570471.png)
+
 In summary, if you create a DAG and set the *start_date* to, for example, '2022-01-03', but you created it on '2022-01-07' and you're going to run it for the present day, if the *catchup* is not configured as  *false* , then the DAG will perform a backfill execution for each previous day from the *start_date* and not from the present day ('2022-01-07'). To prevent this from happening, it will be necessary to configure the *catchup* as  *false* .
+
+
+
+
+
+### Let's assume a DAG start_date to the 28/10/2021:10:00:00 PM UTC and the DAG is turned on at 10:30:00 PM UTC with a schedule_interval of */10 * * * * (After every 10 minutes). How many DagRuns are going to be executed?
+
+The first one is executed at 10:10 for the execution_date 10:00, then 10:20 for the execution_date 10:20. DAG Run 3 is not yet executed since a DAG Run runs once the schedule_interval (10 minutes here) is passed.
+
+Therefore, only 2 DAGs will run!
